@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<!-- import CSS -->
+		<title>登录界面</title>
+		<script src="js/vue.js"></script>
+		<script src="js/public.js"></script>
+		<script src="js/axios.js"></script>
+		<link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+		<!-- import JavaScript -->
+		<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+		<style>
+			body {
+				margin: 0;
+				padding: 0;
+				background: linear-gradient(to right, #f7d9aa, #e8b5c3, #c9a7e3, #a9c6f2, #9cd3e2);
+				background-size: 400% 400%;
+				animation: gradient 20s ease infinite;
+				font-family: Arial, sans-serif;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				height: 100vh;
+			}
+
+			@keyframes gradient {
+				0% {
+					background-position: 0% 50%;
+				}
+
+				50% {
+					background-position: 100% 50%;
+				}
+
+				100% {
+					background-position: 0% 50%;
+				}
+			}
+
+			.el-header,
+			.el-footer {
+				background-color: #f0f0f0;
+				background: rgba(0, 0, 0, .2);
+				background-size: cover;
+				background-position: center;
+				line-height: 60px;
+			}
+
+			.el-aside {
+				background-color: #f0f0f0;
+				background: rgba(0, 0, 0, .2);
+				background-size: cover;
+				background-position: center;
+				text-align: center;
+				line-height: 200px;
+			}
+
+			.el-container:nth-child(7) .el-aside {
+				line-height: 320px;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="app">
+			<el-container>
+				<el-header>食品管理系统</el-header>
+				<el-container>
+					<el-aside width="500px">
+						<el-form label-width="80px" style="height: 60%;width: 40%" class="form">
+							<el-aside width="500px">
+
+								<el-form-item label="用户名">
+									<el-input v-model="user.usercode" placeholder="请输入账号"></el-input>
+								</el-form-item>
+								<el-form-item label="密码">
+									<el-input v-model="user.userpwd" placeholder="请输入密码" type="password"></el-input>
+								</el-form-item>
+								<el-button type="primary" round @click="login">登录</el-button>
+								<el-button type="primary" round @click="reset">重置</el-button>
+							</el-aside>
+						</el-form>
+					</el-aside>
+					<el-container>
+					</el-container>
+				</el-container>
+				<el-footer>Madde by 殷德诚</el-footer>
+			</el-container>
+		</div>
+	</body>
+
+	<script>
+		axios.defaults.withCredentials = true;
+		new Vue({
+			el: '#app',
+			data: {
+				user: {
+					usercode: '',
+					userpwd: '',
+				},
+				nickname:"",
+			},
+
+			methods: {
+				login() {
+					console.log(this.user);
+					if (this.user.usercode.length == 0 || this.user.userpwd.length == 0) {
+						this.$alert('用户名和密码不能为空。', '登录失败', {
+							confirmButtonText: '确定',
+							callback: action => {
+								this.$message({
+									type: 'info',
+									message: `提示:请重新输入用户名和密码！`
+								});
+							}
+						
+						});
+						return
+					}
+					axios.get(UserinfoLogin, {
+						params: this.user
+					}).then(r => {
+						console.log(this.user);
+						if (r.data.isOK) {
+							location.href = './homepage.html';
+						} else {
+							this.$alert('用户名和密码错误！', '登录失败', {
+								confirmButtonText: '确定',
+								callback: action => {
+									this.$message({
+										type: 'info',
+										message: `提示:请重新输入用户名和密码！`
+									});
+								}
+							});
+						}
+					})
+				},
+
+				reset() {
+					this.user.usercode = '';
+					this.user.userpwd = '';
+				},
+			},
+		})
+	</script>
+</html>

@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>主页</title>
+		<script src="js/vue.js"></script>
+		<script src="js/public.js"></script>
+		<script src="js/axios.js"></script>
+		<link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+		<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+		<style>
+			.el-header,
+			.el-footer {
+				background-color: #B3C0D1;
+				color: #333;
+				text-align: center;
+				line-height: 60px;
+			}
+
+			.el-aside {
+				background-color: #D3DCE6;
+				color: #333;
+				text-align: center;
+				line-height: 160px;
+			}
+
+			.el-main {
+				background-color: #E9EEF3;
+				color: #333;
+				text-align: center;
+				line-height: 140px;
+			}
+
+			body>.el-container {
+				margin-bottom: 40px;
+			}
+
+			.el-container:nth-child(5) .el-aside,
+			.el-container:nth-child(6) .el-aside {
+				line-height: 260px;
+			}
+
+			.el-container:nth-child(7) .el-aside {
+				line-height: 320px;
+			}
+
+			.el-input {
+				width: 200px;
+			}
+
+			.content {
+				height: 100%;
+			}
+
+			.backtop {
+				overflow: scroll;
+				height: 100%;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div id="homepage">
+			<el-container>
+				<el-aside width="260px">
+					<el-form label-width="0px" style="height: 20%;width: 100%;">
+						<br>
+						<el-form-item>
+							<el-link @click="showFood">食品展示<i class="el-icon-food el-icon--right"></i>
+							</el-link>
+						</el-form-item>
+						<el-form-item>
+							<el-link @click="showFtype">食品类型展示<i class="el-icon-notebook-1 el-icon--right"></i>
+							</el-link>
+						</el-form-item>
+						<el-form-item>
+							食品名称
+							<el-input placeholder="请输入名称" v-model="searchFname" class="input">
+							</el-input>
+						</el-form-item>
+						<el-form-item>
+							食品类别
+							<el-input placeholder="请输入类别" v-model="searchFtype" class="input">
+							</el-input>
+						</el-form-item>
+						<el-form-item>
+							价格低于
+							<el-input placeholder="请输入单价" v-model="searchFprice" class="input">
+							</el-input>
+						</el-form-item>
+						<el-form-item>
+							<el-button type="primary" round @click="addFoodVisble = true">添加食品</el-button>
+						</el-form-item>
+						<br>
+					</el-form>
+
+				</el-aside>
+				<el-container>
+					<el-header>
+						食品管理系统
+					</el-header>
+					<!-- 在食品展示表格和食品类型展示表格 -->
+					<el-main style="height: 30%">
+						<el-table :data="myFormData.slice((currentPage-1)*pageSize,currentPage*pageSize)"
+							style="width: 100%;" height="1080px" v-loading="loading" :key="Math.random()" v-if="state"
+							stripe>
+							<el-table-column type= "index" width ="50" align="center" label="序号"></el-table-column>
+							<el-table-column align="center" prop="fid" label="序列" width="50">
+							</el-table-column>
+							<el-table-column align="center" prop="ftype.tname" label="类别" width="100">
+							</el-table-column>
+							<el-table-column align="center" prop="fname" label="食品名" width="120">
+							</el-table-column>
+							<el-table-column align="center" label="照片" width="200">
+								<template slot-scope="scope">
+									<el-image :src=getImgUrl(scope.row.fpic)></el-image>
+								</template>
+							</el-table-column>
+							<el-table-column align="center" prop="fprice" label="单价" width="50">
+							</el-table-column>
+							<el-table-column align="center" prop="fdesc" label="描述" width="450">
+							</el-table-column>
+							<el-table-column align="center" prop="fregtime" label="注册时间" width="100">
+							</el-table-column>
+							<el-table-column align="center" label="操作" width="180">
+								<template slot-scope="scope">
+									<el-button type="primary" icon="el-icon-edit" circle
+										@click="handleClickEdit(scope.row)">修改</el-button>
+									<el-button type="danger" icon="el-icon-delete" circle
+										@click="deleteFood(scope.row)">删除</el-button>
+								</template>
+							</el-table-column>
+						</el-table>
+						<ul v-else class="infinite-list" style="overflow:auto" height="10">
+							<li v-for="i in ftypeList" class="infinite-list-item">
+								<el-link type="primary" @click="showFoodWithType(i.tname)">{{i.tname}}</el-link>
+							</li>
+						</ul>
+					</el-main>
+
+					<el-footer>
+						<el-pagination @current-change="handleCurrentChange" :current-page="currentPage"
+							:page-size="pageSize" layout="prev, pager, next,total" :total="myFormData.length"
+							size="large" v-if="state">
+						</el-pagination>
+					</el-footer>
+
+
+				</el-container>
+			</el-container>
+
+			<!-- 修改食品窗口 -->
+			<el-dialog title="修改食品" :visible.sync="changeFoodVisble">
+				<el-form enctype="multipart/form-data">
+					<el-form-item label="食品名称" :label-width="this.formLabelWidth">
+						<el-input v-model="foodToChange.fname" autocomplete="off"
+							v-bind:placeholder=this.foodCurrent.fname>
+						</el-input>
+					</el-form-item>
+					<el-form-item label="食品单价" :label-width="this.formLabelWidth">
+						<el-input v-model="foodToChange.fprice" autocomplete="off"
+							v-bind:placeholder="foodCurrent.fprice"></el-input>
+					</el-form-item>
+					<el-form-item label="食品类别" :label-width="this.formLabelWidth">
+						<el-select v-model="foodToChange.tid" v-bind:placeholder="this.foodCurrent.tname">
+							<el-option v-for="item in ftypeList" :key="item.tid" :label="item.tname" :value="item.tid">
+							</el-option>
+						</el-select>
+					</el-form-item>
+					<el-form-item label="食品照片" :label-width="this.formLabelWidth">
+						<el-image :src=this.foodCurrent.fpic></el-image>
+						<el-upload class="upload-demo" drag action="https://jsonplaceholder.typicode.com/posts/"
+							multiple :http-request="uploadFpicChange" :before-upload="beforePicUpload">
+							<img v-if="imageUrl" :src="imageUrl" class="avatar">
+							<i class="el-icon-upload"></i>
+							<div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+							<div class="el-upload__tip" slot="tip">只能上传jpg/png文件</div>
+						</el-upload>
+					</el-form-item>
+					<el-form-item label="食品描述" :label-width="this.formLabelWidth">
+						<el-input type="textarea" v-bind:placeholder="foodCurrent.fdesc"
+							v-model="foodToChange.fdesc"></el-input>
+					</el-form-item>
+					<el-form-item label="注册时间" :label-width="this.formLabelWidth">
+						<el-input v-bind:placeholder="foodCurrent.fregtime" :disabled="true">
+						</el-input>
+					</el-form-item>
+				</el-form>
+				<div slot="footer" class="dialog-footer">
+					<el-button @click="changeFoodVisble = false">取 消</el-button>
+					<el-button type="primary" @click="changeFood">确 定</el-button>
+				</div>
+			</el-dialog>
+
+			<!-- 添加食品窗口 -->
+			<el-dialog title="添加食品" :visible.sync="addFoodVisble">
+				<el-form enctype="multipart/form-data">
+					<el-form-item label="食品名称" :label-width="this.formLabelWidth">
+						<el-input v-model="foodToAdd.fname" autocomplete="off"></el-input>
+					</el-form-item>
+					<el-form-item label="食品单价" :label-width="this.formLabelWidth">
+						<el-input v-model="foodToAdd.fprice" autocomplete="off"></el-input>
+					</el-form-item>
+					<el-form-item label="食品类别" :label-width="this.formLabelWidth">
+						<el-select v-model="foodToAdd.tid">
+							<el-option v-for="item in ftypeList" :key="item.tid" :label="item.tname" :value="item.tid">
+							</el-option>
+						</el-select>
+					</el-form-item>
+					<el-form-item label="食品照片" :label-width="this.formLabelWidth">
+						<el-upload class="upload-demo" drag action="https://jsonplaceholder.typicode.com/posts/"
+							multiple :before-upload="beforePicUpload" :http-request="uploadFpicAdd">
+							<img v-if="imageUrl" :src="imageUrl" class="avatar">
+							<i class="el-icon-upload"></i>
+							<div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+							<div class="el-upload__tip" slot="tip">只能上传jpg文件</div>
+						</el-upload>
+					</el-form-item>
+					<el-form-item label="食品描述" :label-width="this.formLabelWidth">
+						<el-input type="textarea" v-model="foodToAdd.fdesc"></el-input>
+					</el-form-item>
+				</el-form>
+				<div slot="footer" class="dialog-footer">
+					<el-button @click="cancel">取 消</el-button>
+					<el-button @click="resetFoodToAdd">重 置</el-button>
+					<el-button type="primary" @click="addFood">确 定</el-button>
+				</div>
+			</el-dialog>
+
+		</div>
+	</body>
+
+	<script>
+		axios.defaults.withCredentials = true;
+		let v = new Vue({
+			el: '#homepage',
+			data: {
+
+				formLabelWidth: '120px',
+				input: "",
+				loading: true,
+				changeFoodVisble: false,
+				addFoodVisble: false,
+				// 搜索
+				searchFname: "",
+				searchFdesc: "",
+				searchFtype: "",
+				searchFprice: "",
+				foodListSearch: [],
+				// state为true时展示food，否则展示食品类型
+				state: true,
+				foodList: [],
+				ftypeList: [],
+				currentPage: 1, // 当前页码
+				total: 20, // 总条数
+				pageSize: 8, // 每页的数据条数
+				imageUrl: "",
+				foodToAdd: {
+					tid: '',
+					fname: '',
+					fpic: '',
+					fprice: '',
+					fdesc: '',
+					fregtime: '',
+				},
+				foodToChange: {
+					fid: '',
+					tid: '',
+					fname: '',
+					fpic: '',
+					fdesc: '',
+					fprice: '',
+				},
+				foodCurrent: {
+					fid: '',
+					fname: '',
+					fpic: '',
+					fdesc: '',
+					fprice: '',
+					fregtime: '',
+					tname: '',
+					tid: '',
+				},
+
+
+			},
+
+			created() {
+				this.getFoodList()
+				this.getFtypeList()
+				this.$message({
+					message: "今天是" + this.getDate() + ",欢迎回来！",
+					type: 'success'
+				});
+			},
+
+
+			//搜索指定数据
+			computed: {
+				myFormData() {
+					this.loading = true
+					if ((this.searchFname && this.searchFtype && this.searchFprice && this.searchFdesc)) {
+						this.loading = false
+						return this.foodList
+					}
+					this.foodListSearch = this.foodList;
+					if (this.searchFname) {
+						this.foodListSearch = this.foodListSearch.filter(data => data.fname.toLowerCase().includes(
+							this.searchFname
+							.toLowerCase()));
+					}
+					if (this.searchFtype) {
+						this.foodListSearch = this.foodListSearch.filter(data => data.ftype.tname.toLowerCase()
+							.includes(this.searchFtype
+								.toLowerCase()));
+					}
+					if (this.searchFprice) {
+						this.foodListSearch = this.foodListSearch.filter(data => data.fprice <= this.searchFprice);
+					}
+					if (this.searchFdesc) {
+						this.foodListSearch = this.foodListSearch.filter(data => data.fdesc.toLowerCase().includes(
+							this.searchFdesc
+							.toLowerCase()));
+					}
+					this.loading = false
+					return this.foodListSearch;
+				},
+			},
+
+			methods: {
+				cancel() {
+					this.resetFoodToAdd()
+					this.addFoodVisble = false
+				},
+
+				showFood() {
+					this.searchFname = ""
+					this.searchFtype = ""
+					this.searchFprice = ""
+					this.searchFdesc = ""
+					this.state = true
+				},
+
+				showFtype() {
+					this.state = false
+				},
+
+				resetFoodToChange() {
+					this.foodToChange.tid = ""
+					this.foodToChange.fname = ""
+					this.foodToChange.fpic = ""
+					this.foodToChange.fdesc = ""
+					this.foodToChange.fprice = ""
+					this.foodToChange.fid = ""
+				},
+				showFoodWithType(ftype) {
+					this.searchFname = ""
+					this.searchFprice = ""
+					this.searchFdesc = ""
+					this.state = true
+					this.searchFtype = ftype
+					console
+				},
+
+				getDate() {
+					let dateNow = new Date(),
+						//newDate 月份为0-11
+						monthNow = dateNow.getMonth() + 1,
+						dayNow = dateNow.getDate()
+
+					if (monthNow < 10) {
+						monthNow = '0' + '' + monthNow
+					}
+					if (dayNow < 10) {
+						dayNow = '0' + '' + dateNow.getDate()
+					}
+					let nowDay = dateNow.getFullYear() + '-' + monthNow + '-' + dayNow
+					return nowDay
+				},
+
+				handleClickEdit(row) {
+					this.resetFoodToChange()
+					this.foodCurrent.fid = row.fid
+					this.foodCurrent.tid = row.ftype.tid
+					this.foodCurrent.tname = row.ftype.tname
+					this.foodCurrent.fname = row.fname
+					this.foodCurrent.fpic = this.getImgUrl(row.fpic)
+					this.foodCurrent.fdesc = row.fdesc
+					this.foodCurrent.fprice = row.fprice
+					this.foodCurrent.fregtime = row.fregtime
+					this.changeFoodVisble = true;
+					console.log(this.foodCurrent)
+				},
+
+				changeFood() {
+					this.foodToChange.fid = this.foodCurrent.fid;
+					console.log(this.foodToChange)
+					if (this.foodToChange.fpic == "" && this.foodToChange.fdesc == "" && this.foodToChange
+						.tid == "" && this.foodToChange.fname == "" && this.foodToChange.fprice =="") {
+						this.$alert('没有要修改的信息。', '填写错误', {
+							confirmButtonText: '确定',
+							callback: action => {
+								this.$message.error(`请填写要修改的食品信息。`)
+							}
+						});
+						return
+					}
+					if (!this.foodToChange.fpic) {
+						this.foodToChange.fpic = null
+					}
+					if (!this.foodToChange.fdesc) {
+						this.foodToChange.fdesc = null
+					}
+					if (!this.foodToChange.tid) {
+						this.foodToChange.tid = null
+					}
+					if (!this.foodToChange.fname) {
+						this.foodToChange.fname = null
+					}
+					if (!this.foodToChange.fprice) {
+						this.foodToChange.fprice = null
+					} else {
+						if (isNaN(this.foodToChange.fprice)) {
+							this.$alert('食品价格应该是数字。', '填写错误', {
+								confirmButtonText: '确定',
+								callback: action => {
+									this.$message.error(`请重新填写食品价格。`)
+								}
+							});
+							return
+						}
+						if (this.foodToChange.fprice <= 0) {
+							this.$alert('食品价格应该大于0。', '添加失败', {
+								confirmButtonText: '确定',
+								callback: action => {
+									this.$message.error(`请重新填写食品价格。`)
+								}
+							});
+							return
+						}
+					}
+					this.$confirm('此操作将永久修改食品\"' + this.foodCurrent.fname + '\"的信息, 是否继续?', '提示', {
+						confirmButtonText: '确定',
+						cancelButtonText: '取消',
+						type: 'warning'
+					}).then(() => {
+						axios.post(FoodChange, this.foodToChange).then(r => {
+							this.loading = true
+							if (r.data.isOK) {
+								this.$message({
+									message: '修改成功！ 页面自动更新。',
+									type: 'success'
+								});
+								this.changeFoodVisble = false;
+								this.getFoodList()
+							} else {
+								this.$message.error('修改失败！');
+								this.changeFoodVisble = false;
+								console.log(this.foodToChange)
+							}
+						})
+
+					}).catch(() => {
+						this.$message({
+							type: 'info',
+							message: '已取消修改。'
+						});
+					});
+				},
+
+
+				//删除食物点击事件
+				deleteFood(row) {
+					fid = row.fid;
+					this.$confirm('此操作将永久删除食品\"' + row.fname + '\",是否继续?', '提示', {
+						confirmButtonText: '确定',
+						cancelButtonText: '取消',
+						type: 'warning'
+					}).then(() => {
+						axios.get(FoodDelete, {
+							params: {
+								fid,
+							}
+						}).then(r => {
+							if (r.data.isOK) {
+								this.loading = true
+								this.$message({
+									type: 'success',
+									message: '删除成功!  页面自动更新。'
+								});
+								this.getFoodList()
+							} else {
+								this.$message.error('删除失败！');
+							}
+
+						})
+					}).catch(() => {
+						this.$message({
+							type: 'info',
+							message: '已取消删除。'
+						});
+					});
+				},
+
+				uploadFpicChange(file) {
+					var formData = new FormData()
+					formData.append("file", file.file)
+					var requestConfig = {
+						headers: {
+							'Content-Type': 'multipart/form-data'
+						}
+					}
+					axios.post(FpicAdd, formData, requestConfig)
+						.then((res) => {
+							if (res.data.isOK) {
+								this.$message({
+									message: '图片上传成功！',
+									type: 'success'
+								});
+								this.foodToChange.fpic = res.data.fpic
+							} else {
+								this.$message.error('图片上传失败！');
+							}
+						})
+				},
+
+				//图片上传条件判断
+				beforePicUpload(file) {
+					const isJPG = file.type === 'image/jpeg';
+					const isLt2M = file.size / 1024 / 1024 < 2;
+
+					if (!isJPG) {
+						this.$message.error('上传头像图片只能是 JPG 格式!');
+					}
+					if (!isLt2M) {
+						this.$message.error('上传头像图片大小不能超过 2MB!');
+					}
+					return isJPG && isLt2M;
+				},
+
+				resetFoodToAdd() {
+					this.foodToAdd.tid = ""
+					this.foodToAdd.fname = ""
+					this.foodToAdd.fprice = ""
+					this.foodToAdd.fdesc = ""
+					this.foodToAdd.fpic = ""
+					this.fregtime = ""
+				},
+
+				//添加食物
+				addFood() {
+					this.foodToAdd.fregtime = this.getDate()
+					if (this.foodToAdd.fpic.length == 0) {
+						this.$alert('食品照片未上传。', '添加失败', {
+							confirmButtonText: '确定',
+							callback: action => {
+								this.$message.error(`请上传食品照片。`)
+							}
+						});
+						return
+					}
+					if (this.foodToAdd.fdesc.length == 0) {
+						this.$alert('食品描述不能为空。', '添加失败', {
+							confirmButtonText: '确定',
+							callback: action => {
+								this.$message.error(`请填写食品描述。`)
+							}
+						});
+						return
+					}
+					if (this.foodToAdd.tid.length == 0) {
+						this.$alert('食品类别不能为空。', '添加失败', {
+							confirmButtonText: '确定',
+							callback: action => {
+								this.$message.error(`请选择食品类别。`)
+							}
+						});
+						return
+					}
+					if (this.foodToAdd.fname.length == 0) {
+						this.$alert('食品名称不能为空。', '添加失败', {
+							confirmButtonText: '确定',
+							callback: action => {
+								this.$message.error(`请填写食品名称。`)
+							}
+						});
+						return
+					}
+					if (this.foodToAdd.fprice.length == 0) {
+						this.$alert('食品价格不能为空。', '添加失败', {
+							confirmButtonText: '确定',
+							callback: action => {
+								this.$message.error(`请填写食品价格。`)
+							}
+						});
+						return
+					}
+					if (isNaN(this.foodToAdd.fprice)) {
+						this.$alert('食品价格应该是数字。', '添加失败', {
+							confirmButtonText: '确定',
+							callback: action => {
+								this.$message.error(`请重新填写食品价格。`)
+							}
+						});
+						return
+					}
+					if (this.foodToAdd.fprice <= 0) {
+						this.$alert('食品价格应该大于等于0。', '添加失败', {
+							confirmButtonText: '确定',
+							callback: action => {
+								this.$message.error(`请重新填写食品价格。`)
+							}
+						});
+						return
+					}
+					this.$confirm('此操作将添加食品\"' + this.foodToAdd.fname + '\",是否继续?', '提示', {
+						confirmButtonText: '确定',
+						cancelButtonText: '取消',
+						type: 'warning'
+					}).then(() => {
+						axios.post(FoodAdd, this.foodToAdd).then(r => {
+							console.log(this.foodToAdd);
+							if (r.data.isOK) {
+								this.$message({
+									type: 'success',
+									message: '添加成功!  请等待几秒，页面会自动更新。'
+								});
+								this.addFoodVisble = false;
+								console.log(this.foodToAdd);
+								this.resetFoodToAdd()
+								this.getFoodList()
+							} else {
+								this.$message.error('添加失败！');
+								console.log(this.foodToAdd);
+								this.addFoodVisble = false;
+								this.resetFoodToAdd()
+							}
+						})
+
+
+					}).catch(() => {
+						this.$message({
+							type: 'info',
+							message: '已取消添加。'
+						});
+					});
+
+				},
+
+				//从后台获取食物数据
+				getFoodList() {
+					this.loading = true;
+					axios.get(FoodAll).then(r => {
+						this.foodList = r.data.list;
+
+					})
+					this.loading = false;
+				},
+
+				//从后台获取食物种类数据
+				getFtypeList() {
+					this.loading = true;
+					axios.get(FtypeAll).then(r => {
+						this.ftypeList = r.data.list;
+					})
+					this.loading = false;
+				},
+
+				getImgUrl(img) {
+					return "http://localhost:8080/webFinal/foods/" + img;
+				},
+
+				//上传图片
+				uploadFpicAdd(file) {
+					var formData = new FormData()
+					formData.append("file", file.file)
+					var requestConfig = {
+						headers: {
+							'Content-Type': 'multipart/form-data'
+						}
+					}
+					axios.post(FpicAdd, formData, requestConfig)
+						.then((res) => {
+							if (res.data.isOK) {
+								this.$message({
+									message: '图片上传成功！',
+									type: 'success'
+								});
+								this.foodToAdd.fpic = res.data.fpic
+							} else {
+								this.$message.error('图片上传失败！');
+							}
+						})
+				},
+
+
+				//当前页改变时触发 跳转其他页
+				handleCurrentChange(val) {
+					console.log(`当前页: ${val}`);
+					this.currentPage = val;
+				},
+			},
+
+		})
+	</script>
+</html>
