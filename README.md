@@ -7,7 +7,8 @@ You should learn about:
 4.Backend Development Tool: Eclipse 2018  
 5.Frontend Development Tool: HBuilder X 3.7.9  
 6.Server: Apache Tomcat 9.0.38  
-Before starting a trail, you should try to create your database with SQL files given.
+Before starting a trail, you should try to create your database with SQL files given.  
+
 **Project Structure:**  
 1.Backend Development with Eclipse: The project's backend development is carried out in Eclipse, utilizing the Model-View-Controller (MVC) architectural pattern.  
 2.util Package: The util package contains the BaseDao class, which provides methods for database operations.  
